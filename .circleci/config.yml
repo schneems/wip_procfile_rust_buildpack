@@ -1,0 +1,157 @@
+version: 2.1
+
+orbs:
+  pack: buildpacks/pack@0.2.2
+  heroku-buildpacks:
+    commands:
+      install-build-dependencies:
+        steps:
+          - run:
+              name: "Install rsync, jq, libssl-dev, musl-tools, pkg-config via apt"
+              command: sudo apt-get update && sudo apt-get install -y rsync jq libssl-dev musl-tools pkg-config
+          - run:
+              name: "Install yj 5.0.0"
+              command: |
+                bin_dir="$(mktemp -d)"
+                curl --retry 3 --fail --max-time 10 --location "https://github.com/sclevine/yj/releases/download/v5.0.0/yj-linux" --output "${bin_dir}/yj"
+                chmod +x "${bin_dir}/yj"
+
+                echo "export PATH=\"${bin_dir}:\${PATH}\"" >> $BASH_ENV
+          - run:
+              name: "Install Rust Stable"
+              command: |
+                curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -t x86_64-unknown-linux-musl
+                echo "export PATH=\"$HOME/.cargo/bin:$PATH\"" >> $BASH_ENV
+          - run:
+              name: "Install cargo-make"
+              command: cargo install cargo-make
+
+
+jobs:
+  package-buildpack:
+    parameters:
+      buildpack-dir:
+        type: string
+    docker:
+      - image: cimg/base:2020.01
+    steps:
+      - checkout
+      - setup_remote_docker
+      - pack/install-pack:
+          version: 0.16.0
+      - heroku-buildpacks/install-build-dependencies
+      - run:
+          name: "Build and package buildpack"
+          command: |
+            package_toml="<< parameters.buildpack-dir >>/package.toml"
+            if [[ -f "<< parameters.buildpack-dir >>/build.sh" ]]; then
+              "./<< parameters.buildpack-dir >>/build.sh"
+              package_toml="<< parameters.buildpack-dir >>/target/package.toml"
+            fi
+
+            pack buildpack package test --config "${package_toml}"
+
+  shell-linting:
+    docker:
+      - image: koalaman/shellcheck-alpine:v0.7.1
+    steps:
+      - run: "apk add git"
+      # shfmt is currently (Jan 2021) only available in the edge community repository.
+      - run: "apk add shfmt --repository=http://dl-3.alpinelinux.org/alpine/edge/community"
+      - checkout
+      - run:
+          name: "shellcheck"
+          command: "shfmt -f . | grep -v ^test/ | xargs shellcheck"
+      - run:
+          name: "shfmt"
+          command: "shfmt -f . | grep -v ^test/ | xargs shfmt -d"
+
+  cutlass:
+    parameters:
+      spec_dir:
+        type: string
+    machine:
+      image: ubuntu-2004:202010-01
+    resource_class: xlarge
+    environment:
+      PARALLEL_SPLIT_TEST_PROCESSES: 8
+    steps:
+      - checkout
+      - pack/install-pack:
+          version: 0.16.0
+      - heroku-buildpacks/install-build-dependencies
+      - run:
+          name: Install Ruby dependencies
+          command: |
+            gem install bundler
+            bundle install
+      - run:
+          name: Execute rspec << parameters.spec_dir >>
+          command: bundle exec rspec << parameters.spec_dir >>
+
+  cargo-test:
+    parameters:
+      buildpack-dir:
+        type: string
+    docker:
+      - image: cimg/rust:1.53.0
+    steps:
+      - checkout
+      - setup_remote_docker
+      - heroku-buildpacks/install-build-dependencies
+      - run:
+          name: cargo test
+          command: cargo test
+          working_directory: << parameters.buildpack-dir >>
+
+  rustfmt:
+    parameters:
+      buildpack-dir:
+        type: string
+    docker:
+      - image: cimg/base:2020.01
+    steps:
+      - checkout
+      - setup_remote_docker
+      - heroku-buildpacks/install-build-dependencies
+      - run:
+          name: cargo make test
+          command: cargo make test
+          working_directory: << parameters.buildpack-dir >>
+
+workflows:
+  version: 2
+  ci:
+    jobs:
+      - shell-linting
+      - package-buildpack:
+          matrix:
+            parameters:
+              buildpack-dir:
+                - "buildpacks/jvm"
+                - "buildpacks/maven"
+                - "buildpacks/jvm-function-invoker"
+                - "meta-buildpacks/java"
+                - "meta-buildpacks/java-function"
+                - "shimmed-buildpacks/scala"
+                - "shimmed-buildpacks/gradle"
+                - "shimmed-buildpacks/clojure"
+                - "test/meta-buildpacks/java"
+                - "test/meta-buildpacks/java-function"
+      - cutlass:
+          matrix:
+            parameters:
+              spec_dir:
+                - "test/specs/java"
+                - "test/specs/java-function"
+                - "test/specs/maven"
+      - cargo-test:
+          matrix:
+            parameters:
+              buildpack-dir:
+                - "buildpacks/jvm-function-invoker"
+      - rustfmt:
+          matrix:
+            parameters:
+              buildpack-dir:
+                - "buildpacks/jvm-function-invoker"
