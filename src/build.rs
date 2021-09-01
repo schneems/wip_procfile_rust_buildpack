@@ -1,16 +1,10 @@
 use libcnb::data::launch::{Launch, Process};
+use libcnb::layer_lifecycle::execute_layer_lifecycle;
 use libcnb::{BuildContext, GenericPlatform};
 use std::{fs};
-use libcnb::{Error, TomlFileError};
 
-// use crate::error::JvmFunctionInvokerBuildpackError;
+use crate::error::JvmFunctionInvokerBuildpackError;
 use crate::JvmFunctionInvokerBuildpackMetadata;
-
-#[derive(thiserror::Error, Debug)]
-pub enum JvmFunctionInvokerBuildpackError {
-    #[error("Could not write launch.toml: {0}")]
-    CouldNotWriteLaunchToml(TomlFileError),
-}
 
 pub fn build(
     context: BuildContext<GenericPlatform, JvmFunctionInvokerBuildpackMetadata>,
