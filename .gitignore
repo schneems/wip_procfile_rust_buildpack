@@ -2,3 +2,5 @@
 **/target/
 **/target-cargo/
 .DS_Store
+.rspec_status
+
