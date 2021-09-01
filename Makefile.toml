@@ -71,18 +71,17 @@ use std::collections::HashMap;
 use colored::*;
 
 fn main() {
+
     let destination = PathBuf::from("target");
     if destination.exists() {
         fs::remove_dir_all(&destination).unwrap();
     }
     fs::create_dir_all(&destination.join("bin")).unwrap();
-    fs::create_dir_all(&destination.join("opt")).unwrap();
 
     let mut files = HashMap::new();
     files.insert(PathBuf::from("./target-cargo/x86_64-unknown-linux-musl").join(env!("CARGO_PROFILE")).join(env!("CARGO_MAKE_CRATE_NAME")), destination.join("bin/build"));
     files.insert(PathBuf::from("./buildpack.toml"), destination.join("buildpack.toml"));
     files.insert(PathBuf::from("./package.toml"), destination.join("package.toml"));
-    files.insert(PathBuf::from("./opt/run.sh"), destination.join("opt/run.sh"));
 
     for (from, to) in &files {
         fs::copy(from, to).unwrap();
