@@ -8,10 +8,7 @@ pub fn detect(
     context: DetectContext<GenericPlatform, JvmFunctionInvokerBuildpackMetadata>,
 ) -> Result<DetectOutcome, Error<JvmFunctionInvokerBuildpackError>> {
     if context.app_dir.join("Procfile").exists() {
-        Ok(DetectOutcome::Pass(
-            BuildPlanBuilder::new()
-                .build(),
-        ))
+        Ok(DetectOutcome::Pass(BuildPlanBuilder::new().build()))
     } else {
         Ok(DetectOutcome::Fail)
     }

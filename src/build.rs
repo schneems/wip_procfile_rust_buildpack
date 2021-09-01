@@ -1,7 +1,6 @@
 use libcnb::data::launch::{Launch, Process};
-use libcnb::layer_lifecycle::execute_layer_lifecycle;
 use libcnb::{BuildContext, GenericPlatform};
-use std::{fs};
+use std::fs;
 
 use crate::error::JvmFunctionInvokerBuildpackError;
 use crate::JvmFunctionInvokerBuildpackMetadata;
@@ -11,16 +10,16 @@ pub fn build(
 ) -> Result<(), libcnb::Error<JvmFunctionInvokerBuildpackError>> {
     // let source = context.buildpack_dir.join("opt").join("run.sh");
     let procfile_path = context.app_dir.join("Procfile");
-    let contents = fs::read_to_string(procfile_path);
+    let contents = fs::read_to_string(procfile_path).unwrap();
     // println!("{}", procfile_path);
     // println!("{}", contents.unwrap());
 
+    println!("{}", contents.as_str());
+
     let launch = Launch::default().process(Process::new(
         "web",
-        contents.unwrap(),
-        vec![
-            String::from("")
-        ],
+        contents,
+        vec![String::from("")],
         false,
     )?);
 

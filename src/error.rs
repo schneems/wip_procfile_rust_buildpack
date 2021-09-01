@@ -1,6 +1,45 @@
 use indoc::{formatdoc, indoc};
 use libcnb::{Error, TomlFileError};
 use libherokubuildpack::log_error;
+use libherokubuildpack::DownloadError;
+
+use thiserror::Error;
+
+#[derive(thiserror::Error, Debug)]
+pub enum OptLayerError {
+    #[error("Could not copy run.sh to layer: {0}")]
+    CouldNotCopyRunSh(std::io::Error),
+    #[error("Could not set executable bit on run.sh: {0}")]
+    CouldNotSetExecutableBitForRunSh(std::io::Error),
+}
+
+#[derive(Error, Debug)]
+pub enum RuntimeLayerError {
+    #[error("Could not download runtime JAR: {0}")]
+    DownloadFailed(DownloadError),
+
+    #[error("Could not obtain checksum for runtime JAR: {0}")]
+    ChecksumFailed(std::io::Error),
+
+    #[error("Checksum validation of runtime JAR failed! Checksum was: {0}")]
+    ChecksumMismatch(String),
+}
+
+#[derive(Error, Debug)]
+pub enum BundleLayerError {
+    #[error("Project does not contain any valid functions")]
+    NoFunctionsFound,
+    #[error("Project contains multiple functions")]
+    MultipleFunctionsFound,
+    #[error("Function detection failed with unexpected exit code {0}")]
+    DetectionFailed(i32),
+    #[error("Function detection failed with an unexpected termination of the process")]
+    UnexpectedDetectionTermination,
+    #[error("Function detection failed with an IO error: {0}")]
+    BundleCommandIoError(std::io::Error),
+    #[error("Could not read function bundle TOML: {0}")]
+    CouldNotReadFunctionBundleToml(TomlFileError),
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum JvmFunctionInvokerBuildpackError {

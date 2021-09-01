@@ -14,7 +14,7 @@ RSpec.describe "Cloud Native Buildpack" do
       payload = SecureRandom.hex(10)
       app.start_container(expose_ports: [8080]) do |container|
         response = Excon.get(
-          "http://localhost:#{container.port(8080)}/?payload=#{payload}",
+          "http://localhost:#{container.get_host_port(8080)}/?payload=#{payload}",
           idempotent: true,
           retry_limit: 5,
           retry_interval: 1
