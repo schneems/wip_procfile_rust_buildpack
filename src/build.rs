@@ -1,37 +1,31 @@
-use std::path::PathBuf;
-
 use libcnb::data::launch::{Launch, Process};
-use libcnb::layer_lifecycle::execute_layer_lifecycle;
 use libcnb::{BuildContext, GenericPlatform};
+use std::{fs};
+use libcnb::{Error, TomlFileError};
 
-use crate::error::JvmFunctionInvokerBuildpackError;
-use crate::layers::bundle::BundleLayerLifecycle;
-use crate::layers::opt::OptLayerLifecycle;
-use crate::layers::runtime::RuntimeLayerLifecycle;
+// use crate::error::JvmFunctionInvokerBuildpackError;
 use crate::JvmFunctionInvokerBuildpackMetadata;
+
+#[derive(thiserror::Error, Debug)]
+pub enum JvmFunctionInvokerBuildpackError {
+    #[error("Could not write launch.toml: {0}")]
+    CouldNotWriteLaunchToml(TomlFileError),
+}
 
 pub fn build(
     context: BuildContext<GenericPlatform, JvmFunctionInvokerBuildpackMetadata>,
 ) -> Result<(), libcnb::Error<JvmFunctionInvokerBuildpackError>> {
-    let run_sh_path: PathBuf = execute_layer_lifecycle("opt", OptLayerLifecycle {}, &context)?;
-
-    let runtime_jar_path: PathBuf =
-        execute_layer_lifecycle("runtime", RuntimeLayerLifecycle {}, &context)?;
-
-    let bundle_path = execute_layer_lifecycle(
-        "bundle",
-        BundleLayerLifecycle {
-            invoker_jar_path: runtime_jar_path.clone(),
-        },
-        &context,
-    )?;
+    // let source = context.buildpack_dir.join("opt").join("run.sh");
+    let procfile_path = context.app_dir.join("Procfile");
+    let contents = fs::read_to_string(procfile_path);
+    // println!("{}", procfile_path);
+    // println!("{}", contents.unwrap());
 
     let launch = Launch::default().process(Process::new(
         "web",
-        run_sh_path.to_string_lossy(),
+        contents.unwrap(),
         vec![
-            runtime_jar_path.to_string_lossy(),
-            bundle_path.to_string_lossy(),
+            String::from("")
         ],
         false,
     )?);

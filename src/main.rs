@@ -8,7 +8,6 @@ use serde::Deserialize;
 mod build;
 mod detect;
 mod error;
-mod layers;
 
 fn main() {
     cnb_runtime(
