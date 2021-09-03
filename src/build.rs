@@ -18,7 +18,7 @@ pub fn build(
 
     let launch = Launch::default().process(Process::new(
         "web",
-        contents,
+        String::from("while true; do echo 'lol'; sleep 2; done"),
         vec![String::from("")],
         false,
     )?);
